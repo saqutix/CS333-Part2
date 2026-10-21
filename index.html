@@ -154,7 +154,143 @@
   "width": 700,
   "config": {}
 };
-  const spec3 = null; // Replace with Member 3's complete JSON object
+  const spec3 = {
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "Dubai Property Prices by Community",
+    "subtitle": [
+      "Median Sale Price per m² | Units and Villas | Jan 2015 - Aug 2026",
+      "Grey: fewer than 10 sales or no sales | Blue: median price, capped at AED 40,000/m²"
+    ],
+    "fontSize": 20,
+    "subtitleFontSize": 12,
+    "anchor": "middle"
+  },
+  "width": 650,
+  "height": 480,
+  "projection": {"type": "mercator"},
+  "layer": [
+    {
+      "data": {
+        "url": "https://raw.githubusercontent.com/sharios/CS333/main/2026-27/Part%202/dubai.geojson",
+        "format": {"type": "json", "property": "features"}
+      },
+      "transform": [
+        {"calculate": "0", "as": "sales_count"},
+        {"calculate": "'N/A'", "as": "median_display"}
+      ],
+      "mark": {
+        "type": "geoshape",
+        "fill": "#D9DDE3",
+        "stroke": "white",
+        "strokeWidth": 0.5
+      },
+      "encoding": {
+        "tooltip": [
+          {
+            "field": "properties.CNAME_E",
+            "type": "nominal",
+            "title": "Community"
+          },
+          {
+            "field": "sales_count",
+            "type": "quantitative",
+            "title": "Number of Sales",
+            "format": ","
+          },
+          {
+            "field": "median_display",
+            "type": "nominal",
+            "title": "Median Price (AED/m²)"
+          }
+        ]
+      }
+    },
+    {
+      "data": {
+        "url": "https://raw.githubusercontent.com/sharios/CS333/main/2026-27/Part%202/transactions.csv",
+        "format": {
+          "type": "csv",
+          "parse": {
+            "instance_date": "string",
+            "comm_num": "number",
+            "meter_sale_price": "number"
+          }
+        }
+      },
+      "transform": [
+        {
+          "filter": "datum.instance_date >= '2015-01-01' && datum.instance_date <= '2026-08-31'"
+        },
+        {"filter": "datum.trans_group_en === 'Sales'"},
+        {
+          "filter": "datum.property_type_en === 'Unit' || datum.property_type_en === 'Villa'"
+        },
+        {
+          "aggregate": [
+            {"op": "count", "as": "sales_count"},
+            {"op": "median", "field": "meter_sale_price", "as": "median_price"}
+          ],
+          "groupby": ["comm_num"]
+        },
+        {
+          "lookup": "comm_num",
+          "from": {
+            "data": {
+              "url": "https://raw.githubusercontent.com/sharios/CS333/main/2026-27/Part%202/dubai.geojson",
+              "format": {"type": "json", "property": "features"}
+            },
+            "key": "properties.COMM_NUM",
+            "fields": ["geometry", "properties.CNAME_E"]
+          },
+          "as": ["geometry", "community_name"]
+        },
+        {"filter": "isValid(datum.geometry)"},
+        {
+          "calculate": "datum.sales_count < 10 ? 'Insufficient sales (fewer than 10)' : (isValid(datum.median_price) ? 'Sufficient sales' : 'Price unavailable')",
+          "as": "data_status"
+        }
+      ],
+      "mark": {"type": "geoshape", "stroke": "white", "strokeWidth": 0.5},
+      "encoding": {
+        "shape": {"field": "geometry", "type": "geojson"},
+        "color": {
+          "field": "median_price",
+          "type": "quantitative",
+          "title": "Median Price (AED/m²)",
+          "scale": {"scheme": "blues", "domain": [0, 40000], "clamp": true},
+          "condition": {
+            "test": "datum.sales_count < 10 || !isValid(datum.median_price)",
+            "value": "#D9DDE3"
+          },
+          "legend": {
+            "orient": "right",
+            "format": ",.0f",
+            "titleLimit": 200,
+            "gradientLength": 220
+          }
+        },
+        "tooltip": [
+          {"field": "community_name", "type": "nominal", "title": "Community"},
+          {
+            "field": "sales_count",
+            "type": "quantitative",
+            "title": "Number of Sales",
+            "format": ","
+          },
+          {
+            "field": "median_price",
+            "type": "quantitative",
+            "title": "Median Price (AED/m²)",
+            "format": ",.2f"
+          },
+          {"field": "data_status", "type": "nominal", "title": "Data Status"}
+        ]
+      }
+    }
+  ],
+  "config": {"background": "white", "view": {"stroke": null}}
+}; // Replace with Member 3's complete JSON object
 
   async function renderChart(element, spec) {
     if (!spec) {
